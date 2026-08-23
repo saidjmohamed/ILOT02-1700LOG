@@ -1,0 +1,16 @@
+'use client';
+import Link from 'next/link';
+import {useEffect,useState} from 'react';
+import {useParams,useRouter} from 'next/navigation';
+import {supabase} from '../../../lib/supabase';
+
+export default function ResidentPage(){
+ const {id}=useParams<{id:string}>(); const router=useRouter(); const [r,setR]=useState<any>(null); const [cs,setCs]=useState<any[]>([]); const [msg,setMsg]=useState(''); const [loading,setLoading]=useState(true);
+ async function load(){setLoading(true);const [{data:r0},{data:cs0}]=await Promise.all([supabase.from('residents').select('id,building,apartment,first_name,last_name,full_name,phone,is_active,created_at,privacy_consent,privacy_consent_at,privacy_consent_version').eq('id',id).single(),supabase.from('contributions').select('id,amount,contribution_date,treasury_id,treasuries(name),note').eq('resident_id',id).order('contribution_date',{ascending:false})]);setR(r0);setCs(cs0||[]);setLoading(false)}
+ useEffect(()=>{load()},[id]);
+ async function remove(){if(!confirm('سيتم إخفاء الجار من القائمة مع الحفاظ على سجله المالي. هل تريد المتابعة؟'))return;const {error}=await supabase.from('residents').update({is_active:false,updated_at:new Date().toISOString()}).eq('id',id);setMsg(error?`تعذر حذف الجار: ${error.message}`:'تم حذف الجار من القوائم مع الحفاظ على السجل المالي.');if(!error)setTimeout(()=>router.push('/residents'),700)}
+ if(loading)return <main className="wrap"><div className="card">جاري التحميل...</div></main>;
+ if(!r)return <main className="wrap"><div className="card empty">الجار غير موجود.</div></main>;
+ const total=cs.reduce((s,c)=>s+Number(c.amount||0),0);
+ return <main className="wrap"><div className="sectionTitle"><div><h2>{r.full_name||`${r.first_name||''} ${r.last_name||''}`}</h2><p className="muted">عمارة {r.building} — شقة {r.apartment||'—'}</p></div><div className="actions"><Link className="secondary" href={`/residents/${id}/edit`}>تعديل</Link><button className="danger" onClick={remove}>حذف</button></div></div>{msg&&<div className="notice">{msg}</div>}<section className="stats"><div className="card"><div className="statLabel">الهاتف</div><div className="statValue">{r.phone||'غير مسجل'}</div></div><div className="card"><div className="statLabel">إجمالي المساهمات</div><div className="statValue">{total.toLocaleString('ar-DZ')} دج</div></div><div className="card"><div className="statLabel">عدد المساهمات</div><div className="statValue">{cs.length}</div></div></section><div className="card"><h3>السجل المالي</h3>{!cs.length?<div className="empty">لا توجد مساهمات لهذا الجار.</div>:cs.map(c=><div className="tx" key={c.id}><div><b>{c.treasuries?.name||'خزينة'}</b><div className="txSub">{c.contribution_date}{c.note?` • ${c.note}`:''}</div></div><b className="green">+{Number(c.amount).toLocaleString('ar-DZ')} دج</b></div>)}</div><div className="card"><h3>حالة الموافقة على معالجة البيانات</h3><p>الموافقة: {r.privacy_consent?'موجودة':'غير موجودة'}</p><p className="muted">تاريخ الموافقة: {r.privacy_consent_at||'—'} • النسخة: {r.privacy_consent_version||'—'}</p></div></main>
+}

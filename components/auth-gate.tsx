@@ -1,40 +1,5 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
-
-export default function AuthGate({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    let mounted = true;
-    async function check() {
-      const [{ data: { session } }, { data: hasAdmin }] = await Promise.all([
-        supabase.auth.getSession(),
-        supabase.rpc('has_super_admin'),
-      ]);
-      if (!mounted) return;
-      if (hasAdmin !== true) {
-        if (pathname !== '/setup') router.replace('/setup');
-        else setReady(true);
-        return;
-      }
-      if (!session) {
-        if (pathname !== '/login') router.replace('/login');
-        else setReady(true);
-        return;
-      }
-      if (pathname === '/login' || pathname === '/setup') router.replace('/');
-      else setReady(true);
-    }
-    check();
-    const { data: listener } = supabase.auth.onAuthStateChange(() => check());
-    return () => { mounted = false; listener.subscription.unsubscribe(); };
-  }, [pathname, router]);
-
-  if (!ready) return <main className="authScreen"><div className="card authCard">جاري التحقق من الحساب...</div></main>;
-  return children;
-}
+export default function AuthGate({ children }: { children: React.ReactNode }) {const pathname=usePathname();const router=useRouter();const[ready,setReady]=useState(false);useEffect(()=>{let mounted=true;async function check(){const[{data:{session}},{data:hasAdmin}]=await Promise.all([supabase.auth.getSession(),supabase.rpc('has_super_admin')]);if(!mounted)return;const publicPath=pathname==='/login'||pathname==='/register'||pathname==='/setup';if(hasAdmin!==true){if(pathname!=='/setup')router.replace('/setup');else setReady(true);return}if(!session){if(publicPath)setReady(true);else router.replace('/login');return}if(pathname==='/login'||pathname==='/register'||pathname==='/setup')router.replace('/');else setReady(true)}check();const{data:listener}=supabase.auth.onAuthStateChange(()=>check());return()=>{mounted=false;listener.subscription.unsubscribe()}},[pathname,router]);if(!ready)return <main className="authScreen"><div className="card authCard">جاري التحقق من الحساب...</div></main>;return children}

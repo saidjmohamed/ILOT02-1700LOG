@@ -17,12 +17,13 @@ export default function NewResident(){
     if(!consent){setMsg('يجب الحصول على موافقة الجار على معالجة بياناته الشخصية قبل الحفظ.');return;}
     setBusy(true);
     const full_name=`${form.first_name} ${form.last_name}`.trim();
-    const {data:dup}=await supabase.from('residents').select('id').eq('building',form.building).eq('apartment',form.apartment).eq('full_name',full_name).limit(1);
+    const {data:dup}=await supabase.from('public_residents').select('id').eq('building',form.building).eq('apartment',form.apartment).eq('full_name',full_name).limit(1);
     if(dup?.length){setMsg('يوجد جار مسجل بنفس البيانات.');setBusy(false);return}
+    const now=new Date().toISOString();
     const {error}=await supabase.from('residents').insert({
-      ...form, full_name, updated_at:new Date().toISOString(),
+      ...form, full_name, updated_at:now,
       privacy_consent:true,
-      privacy_consent_at:new Date().toISOString(),
+      privacy_consent_at:now,
       privacy_consent_version:CONSENT_VERSION,
       privacy_consent_purpose:CONSENT_PURPOSE
     });

@@ -2,10 +2,15 @@
 
 import { useEffect, useState } from 'react';
 
+type InstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+};
+
 const APP_URL = 'https://ilot02-1700log.vercel.app/';
 
 export default function AppPrompts() {
-  const [installEvent, setInstallEvent] = useState<any>(null);
+  const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null);
   const [showInstall, setShowInstall] = useState(false);
   const [showShare, setShowShare] = useState(false);
 
@@ -16,29 +21,28 @@ export default function AppPrompts() {
 
     const onBeforeInstall = (event: Event) => {
       event.preventDefault();
-      setInstallEvent(event);
+      setInstallEvent(event as InstallPromptEvent);
       if (!installed && !installDismissed) setShowInstall(true);
     };
 
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
-    if (!installed && !installDismissed) {
-      const timer = window.setTimeout(() => {
-        if (installEvent || /Android|iPhone|iPad/i.test(navigator.userAgent)) setShowInstall(true);
-      }, 900);
-      return () => {
-        window.clearTimeout(timer);
-        window.removeEventListener('beforeinstallprompt', onBeforeInstall);
-      };
-    }
-    if (!shareDismissed) {
-      const timer = window.setTimeout(() => setShowShare(true), 1500);
-      return () => {
-        window.clearTimeout(timer);
-        window.removeEventListener('beforeinstallprompt', onBeforeInstall);
-      };
-    }
-    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall);
-  }, [installEvent]);
+
+    const installTimer = window.setTimeout(() => {
+      if (!installed && !installDismissed && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
+        setShowInstall(true);
+      }
+    }, 900);
+
+    const shareTimer = window.setTimeout(() => {
+      if (!shareDismissed) setShowShare(true);
+    }, 3500);
+
+    return () => {
+      window.clearTimeout(installTimer);
+      window.clearTimeout(shareTimer);
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+    };
+  }, []);
 
   const dismissInstall = () => {
     sessionStorage.setItem('ilot-install-dismissed', '1');
@@ -67,8 +71,6 @@ export default function AppPrompts() {
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
     dismissShare();
   };
-
-  if (!showInstall && !showShare) return null;
 
   return (
     <>
